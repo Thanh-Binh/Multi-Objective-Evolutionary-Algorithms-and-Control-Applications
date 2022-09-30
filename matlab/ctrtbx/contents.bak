@@ -1,0 +1,46 @@
+% The Multiobjective Controller Design Toolbox  
+% Version 2.0   October-96
+%
+% Main programs:
+%    classcfg  - Main routine for creating the state-space matrice of the 
+%                closed-loop system using classical controller: P, PI, PID
+%    cpfsyn    - Computing the H-infinity (sub)optimal controller
+%    ctrlfgen  - Generating a main objective function (M-file) for a given 
+%                control design
+%    ctr_step  - Simulation a closed-loop system and return plant's
+%                (in)output variables
+%    design    - Main routine for design
+%    guiclcfg  - GUI-based routine for configuration of the closed-loop system
+%    lsdpcfg   - Configuration of the closed-loop system using LSDP-Controller
+%    lqgcfg    - Configuration of the closed-loop system using LQG-Controller
+%                (Model 1)
+%    lqgcfg1   - Configuration of the closed-loop system using LQG-Controller
+%                (Model 2)
+%    moderncfg - Main routine for creating the state-space matrice of the 
+%                closed-loop system using modern controller: 
+%                LQG-, Hinf-, Mu-Controller
+%    polopt    - GUI-based routine for choosing a pole region
+%    polestr   - Writing matlab codes for computing objective function 
+%                corresponding to a pole region into a main M-file
+%    ssp_get   - Get parameters (A,B,C,D,E) of a state-space description
+%                for a plant
+%    w1ui      - GUI-based routine to configurate the 1st weighting block
+%    w2ui      - GUI-based routine to configurate the 2nd weighting block
+%    wtfstr    - Format a weighting function matrix W into a transfer 
+%                function string
+
+%
+% Utilities:
+%    abcdechk  - Checks dimensional consistency of A,B,C,E state-space matrices.
+%    arrow     - Routine for displaying an arrow on gca
+%    cdhelper  - Text-Helper for all uicontrol handles
+%    lc_call   - Choosing a constraint/objective description for a control
+%                requirement (performance)
+%    lc_call1  - Choosing a control requirement (performance)
+%
+
+% All Rights Reserved
+% Author: To Thanh Binh
+% IFAT University of Magdeburg
+% Germany
+% Date: November 1996

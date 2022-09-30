@@ -1,0 +1,41 @@
+I am very pleased to announce the new version of the Evolution Strategy
+Toolbox for use with Matlab.
+
+Evolution Strategy Toolbox is a powerful tool for scalar and multiobjective constrained optimization problems.
+
+New Features:
+  - Support for optimization subject to linear and nonlinear constraints
+  (in terms of inequalities or equalities)
+  - Search for a feasible region in which all given constraints are satisfied (without optimizing any objective)
+  - Many evolutionary algorithms is available so that it is very easy to
+   configure ES for each optimization task (that means, users can choose desired algorithms for mutation, recombination and selection or
+set some important parameters of ES (population size, niche methods etc.))
+  - Many demos are now available.
+  - Many improvements by searching for global minima or feasible
+trade-offs between conflict objectives; by updating population and
+by dialogue with the obtained results.
+
+and more ...more .. 
+
+
+Requirement: Matlab 5.**
+
+
+
+I am pleased to announce "Multiobjective Controller Design Toolbox"
+for use with Matlab.
+
+This toolbox provides many GUI for 
+   - setting state-space matrice for a plant
+   - choosing and configuring a controller (PI, PID, LQG, Loop Shaping Design Procedure (LSDP))
+   - choosing design requirements (rise time, settling time, time to
+peak, overshoot, steady state error, constraints on plant's inputs and
+outputs or specific pole region) for each suitable plant's inputs
+and outputs. Every design requirement can be formulated either in terms
+of an objective or in terms of a constraint.
+   - for choosing a pole region (hyperbolla, disc, mixed, etc.) 
+   - automatically generating a suitable code for multiobjective optimization (M-file)
+
+After formulating the design problem and converting it into optimization
+task, this tool calls the multiobjective evolution strategy to solve the optimization task.  
+

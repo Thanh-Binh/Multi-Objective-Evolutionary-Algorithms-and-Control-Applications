@@ -1,0 +1,291 @@
+% high level entry function for GENetic ALGorithm toolbox for matlab
+%
+% This function is the main driver for the GA Toolbox.
+% Here all the parameters are resolved and the appropriate
+% functions are called. Additionally, result functions and
+% plot functions are called.
+%
+% Syntax:  [xnew, GOPTIONS] = genalg1(OBJ_F, GOPTIONS, VLB, VUB, P1, P2, P3, P4, P5, P6, P7, P7, P8, P9, P10)
+%
+% Input parameter:
+%    OBJ_F     - Name of m-file containing the objective function or
+%                matlab-expression of objective function
+%                The function 'OBJ_F' should return the values of the objectives, ObjV.
+%                ObjV = OBJ_F(X).
+%    GOPTIONS  - vector of parameters, see ckekgopt for details or documentation
+%    VLB       - vector containing lower bounds of domain of objectives
+%    VUB       - vector containing upper bounds of domain of objectives
+%    P1-P10    - (optional) parameters, passed through to OBJ_F
+%
+% Output parameter:
+%    xnew      - best objective values of OBJ_F, obtained during all generations.
+%    GOPTIONS  - same as input parameter, returns parameter set, see fgoption for details
+%
+% See also: tbxmpga, tbxdbga, tbxloga, dgagraf
+
+% Author:     Hartmut Pohlheim
+% History:    05.02.95     file created
+%             05.02.95     same structure as mpga and attgoal (where possible)
+%             08.02.94     parameter checking removed, check parameters in
+%                          previous level
+%                          use new GOPTIONS numbers
+%             16.02.95     save to file implemented
+%             17.02.95     parameters P1-P10 added
+%                          matlab expression in FUN now possible
+%                          all genetic algorithm parameters are saved to file (if save to file)
+%             xx.04.95     result plotting of best individual (problem specific) added
+%             23.05.95     goptions(19) could be 2 as well, for binarybinary parameterformat
+
+
+function [xnew, GOPTIONS] = genalg1(OBJ_F, GOPTIONS, VLB, VUB, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10);
+
+% Create matrix with boundaries of objective function
+   VLB = VLB(:)'; VUB = VUB(:)';
+   VLUB = [VLB; VUB];
+
+% Get meaningful names for parameters
+   NVAR = size(VLUB, 2);         % Number of objective variables
+
+   OUTPUTTAB = (rem(GOPTIONS(1), 10) == 1 | rem(GOPTIONS(1), 10) == 2);  % Display tabular output
+   OUTPUTGRA = (rem(GOPTIONS(1), 10) == 2 | rem(GOPTIONS(1), 10) == 3);  % Display tabular output
+   SAVE2FILE = GOPTIONS(1) >= 10;                                        % Save results/output to file
+   
+   TERMOBJECT = GOPTIONS(2);     % Value for termination if minimum reached
+
+   if GOPTIONS(5) == 0, SEL_F = 'selsus';     % Set selection function
+   elseif GOPTIONS(5) == 1, SEL_F = 'selrws';
+   elseif GOPTIONS(5) == 2, SEL_F = 'sellocal';
+   elseif GOPTIONS(5) == 3, SEL_F = 'seltrunc';
+   else SEL_F = 'sus'; end
+
+   if GOPTIONS(6) == 0, MUT_F = 'mutbga';  % Set mutation function
+   elseif GOPTIONS(6) == 1, MUT_F = 'mutbint';
+   elseif GOPTIONS(6) == 2, MUT_F = 'mutbint';
+   else MUT_F = 'mutbga'; end
+
+   if GOPTIONS(7) == 0, XOV_F = 'recdis';  % Set recombination function
+   elseif GOPTIONS(7) ==  1, XOV_F = 'recint';
+   elseif GOPTIONS(7) ==  2, XOV_F = 'reclin';
+   elseif GOPTIONS(7) ==  3, XOV_F = 'recmut';
+   elseif GOPTIONS(7) == 10, XOV_F = 'xovdp';
+   elseif GOPTIONS(7) == 11, XOV_F = 'xovdprs';
+   elseif GOPTIONS(7) == 12, XOV_F = 'xovsp';
+   elseif GOPTIONS(7) == 13, XOV_F = 'xovsprs';
+   elseif GOPTIONS(7) == 14, XOV_F = 'xovsh';
+   elseif GOPTIONS(7) == 15, XOV_F = 'xovshrs';
+   else XOV_F = 'recdis'; end; 
+
+   MAXGEN = GOPTIONS(14);        % Maximal number of generations
+   CODEREAL = GOPTIONS(19);      % Format for objective variables
+   NIND = GOPTIONS(20);          % Number of individuals per (sub)population
+   SUBPOP = GOPTIONS(21);        % Number of subpopulations
+   GGAP = GOPTIONS(22);          % Generation gap, how many new individuals are created
+   INSR = 1.0;                   % Insertion rate, how many of the offspring are inserted
+   if CODEREAL,                  % Crossover rate and mutation rate 
+      XOVR =  0.7; MUTR = 0.7 / NVAR;
+   else
+      XOVR =  1;  MUTR = 1 / NVAR;
+   end
+   MUTSHRINK = 1;                % Shrinking of mutation range
+
+   SP = GOPTIONS(23);            % Selective Pressure
+   if SP > 2, RANKMETH = 1;      % Ranking method 
+   else RANKMETH = 0; end        % 0: linear; 1: non-linear
+   SELSTRUCT = GOPTIONS(24);     % Selection structure
+
+   MIGR = GOPTIONS(26);          % Migration rate between subpopulations
+   MIGTOPO = GOPTIONS(27);       % Topology of  migration
+   MIGGEN = 10;                  % Number of generations between migration (isolation time)
+   MIGFIT =  1;                  % Selection method for migration (0: uniform, 1: fitness)
+
+   PLOTTIME = 10;                % Number of generations between ploting results
+
+   if GOPTIONS(28) > 0, SAVE2FILE = 1; end
+   if SAVE2FILE == 1,
+      SaveOutputFile = gatbxini('save_output', OBJ_F);
+   end
+   if GOPTIONS(29) > 0,
+      INITFUNCTION = 1;
+      InitFunctionFile = gatbxini('init_function', OBJ_F);
+   end
+   if GOPTIONS(30) > 0,
+      STATEPLOT = 1;
+      STATEPLOTTIME = ceil(GOPTIONS(30));
+      StatePlotFile = gatbxini('state_plot', OBJ_F);
+   end
+
+
+% Build matrix with boundaries of objective values for binary coding
+   if CODEREAL == 1,
+      PRECI = 20;    % Precisicion of binary representation
+      VLUBbin = [rep([PRECI],[1, NVAR]);...
+                 VLUB;...
+                 rep([1; 0; 1 ;1], [1, NVAR])];
+   end
+
+% Create binary/real population
+   if CODEREAL == 1, Chrom = crtbp(SUBPOP * NIND, NVAR * PRECI);
+   elseif CODEREAL == 2, Chrom = crtbp(SUBPOP * NIND, NVAR);
+   else Chrom = crtrp(SUBPOP * NIND, VLUB);
+   end
+
+% reset count variables
+   gen = 1;
+   termopt = 0;
+
+% Build string of objective function
+   genevalstr = [OBJ_F];
+   if ~any(OBJ_F < 48)
+      if CODEREAL == 1, genevalstr = [genevalstr, '(bin2real(x, VLUBbin)'];
+      else genevalstr = [genevalstr, '(x']; end
+      for i = 1:nargin-4
+         genevalstr = [genevalstr, ',P', int2str(i)];
+      end
+      genevalstr = [genevalstr, ')'];
+   end
+% Build string of simulation result ploting function
+   if ~any(OBJ_F < 48)
+      stateplotevalstr = ['feval(StatePlotFile, OBJ_F, PlotChrom, gen'];
+      for i = 1:nargin-4
+         stateplotevalstr = [stateplotevalstr, ',P', int2str(i)];
+      end
+      stateplotevalstr = [stateplotevalstr, ');'];
+   end
+
+% Calculate objective function for population
+   x = Chrom;
+   ObjV = eval(genevalstr);
+
+% Count number of objective function evaluations
+   GOPTIONS(10) = NIND * SUBPOP;
+
+% Reset matrices of best results (for plotting)
+   [GOPTIONS(8), ixbest] = min(ObjV);
+   % Create vector with all useful results
+   ResultOpt = [gen GOPTIONS(10) ObjV(ixbest) Chrom(ixbest,:)];
+   ObjValBest = ObjV(ixbest);
+   IndAllBest = Chrom(ixbest,:);
+
+% String for output of additional parameters
+   Px = []; for i = 1:nargin-4, Px = [Px, sprintf('  P%.0f = %s', i, sprintf('%.6g  ', eval(['P' int2str(i)])))]; end
+
+% Display output
+   if OUTPUTTAB,
+      disp(sprintf('Objective function:  %s', OBJ_F));
+      if nargin > 4, disp(sprintf('Additional  parameters:  %s', Px)); end
+      disp('Generation   f-Count      Function');
+      disp(sprintf('%5.0d.      %8.0d  %12.6g', ResultOpt(1:3)));
+   end
+
+% Save output/results to file
+   if SAVE2FILE,
+      datetime = clock; time = sprintf('%.0f:%02.0f:%02.0f', datetime(4), datetime(5), datetime(6));
+      [fidgen, error_message] = fopen(SaveOutputFile, 'at');
+      if fidgen == -1, error(sprintf('error during fopen: %s', error_message)); end
+      fprintf(fidgen, '\nGenetic Optimization of:  %s    Date: %s   Time: %s\n', OBJ_F, date, time);
+      if nargin > 4, fprintf(fidgen, 'Additional parameters:  %s\n', Px); end
+      fprintf(fidgen, 'Genetic algorithm parameters:\n');
+      fprintf(fidgen, '   individuals = %.0f  subpopulations = %.0f  max. generations = %.0f', NIND, SUBPOP, MAXGEN);
+      fprintf(fidgen, '   generation gap = %.2g  variable format = %.0f\n', GGAP, CODEREAL);
+      fprintf(fidgen, '   selection = %s   mutation = %s (rate = %.2g)', SEL_F, MUT_F, MUTR);
+      fprintf(fidgen, '   recombination = %s (rate = %.2g)\n', XOV_F, XOVR);
+      fprintf(fidgen, '   selection pressure = %.2g   selection structure = %.0f   rank method = %.0f\n', SP, SELSTRUCT, RANKMETH);
+      fprintf(fidgen, '   migration rate = %.2g   migration topology = %.0f   migration time = %.0f\n', MIGR, MIGTOPO, MIGGEN);
+      fprintf(fidgen, 'Generation   f-Count      Function    Best Individual\n');
+      fprintf(fidgen, '%5.0d.      %8.0d  %12.6g', ResultOpt(1:3));
+      fprintf(fidgen, '%12.6g', Chrom(ixbest,:)); fprintf(fidgen, '\n');
+   end
+
+% Iterate subpopulations till termination or MAXGEN
+   while ((gen < MAXGEN) & (termopt == 0)),
+   % Increment generation counter
+      gen=gen+1;
+
+   % Fitness assignement to whole population
+      FitnV = ranking(ObjV, [SP RANKMETH], SUBPOP);
+
+   % Select individuals from population
+      [SelCh, SelIx] = select(SEL_F, Chrom, FitnV, GGAP, SUBPOP, SELSTRUCT);
+      
+   % Recombine selected individuals
+      if strcmp(lower(XOV_F), 'recmut'), SelCh=mutate(MUT_F, SelCh, VLUB, [MUTR MUTSHRINK], SUBPOP);
+      else SelCh=recombin(XOV_F, SelCh, XOVR, SUBPOP);
+      end
+      
+   % Mutate offspring
+      if CODEREAL == 0, SelCh=mutate(MUT_F, SelCh, VLUB, [MUTR MUTSHRINK], SUBPOP);
+      else  SelCh=mutate(MUT_F, SelCh, [], [MUTR], SUBPOP);
+      end
+
+   % Calculate objective function for offsprings
+      x = SelCh;
+      ObjVOff = eval(genevalstr);
+      GOPTIONS(10) = GOPTIONS(10) + size(SelCh,1);
+
+   % Insert offspring in population replacing parents
+      if strcmp(SEL_F,'sellocal'),
+         [Chrom, ObjV] = reinsloc(Chrom, SelCh, SUBPOP, [3 SELSTRUCT], ObjV, ObjVOff, SelIx);
+      else
+         [Chrom, ObjV] = reins(Chrom, SelCh, SUBPOP, [1 INSR], ObjV, ObjVOff);
+      end
+      
+   % Migrate individuals between subpopulations
+      if ((termopt ~= 1) & (rem(gen, MIGGEN) == 0))
+         [Chrom, ObjV] = migrate(Chrom, SUBPOP, [MIGR, MIGFIT, MIGTOPO], ObjV);
+      end
+
+   % Save the best objective value and the best individual
+      [GOPTIONS(8), ixbest] = min(ObjV);
+      % Create vector with all useful results
+      ResultOpt = [gen GOPTIONS(10) ObjV(ixbest) Chrom(ixbest,:)];
+      ObjValBest = [ObjValBest; ObjV(ixbest)];
+      IndAllBest = [IndAllBest; Chrom(ixbest,:)];
+
+   % Display output
+      if OUTPUTTAB,
+         disp(sprintf('%5.0d.      %8.0d  %12.6g', ResultOpt(1:3)));
+      end
+
+   % Save output/results to file
+      if SAVE2FILE,
+         fprintf(fidgen, '%5.0d.      %8.0d  %12.6g', ResultOpt(1:3));
+         fprintf(fidgen, '%12.6g', Chrom(ixbest,:)); fprintf(fidgen, '\n');
+      end
+
+   % Plot some results, rename title of figure for graphic output
+      if ((rem(gen,PLOTTIME) == 0) | (rem(gen,MAXGEN) == 0) | (termopt == 1)) & OUTPUTGRA,
+         FigName = ['GenAlg1[' OBJ_F(1:min(8, size(OBJ_F, 2))) '-' int2str(SUBPOP) '] in Generation ' int2str(gen)];
+         if CODEREAL == 1,
+            ShowChrom = bin2real(Chrom, VLUBbin);
+            ShowIndAll = bin2real(IndAllBest, VLUBbin);
+         else
+            ShowChrom = Chrom; ShowIndAll = IndAllBest;
+         end
+         resplot(FigName, ShowChrom(1:2:size(ShowChrom,1),:),...
+                 ShowIndAll(max(1,gen-4*PLOTTIME+1):size(ShowIndAll,1),:),...
+                 [ObjV], ObjValBest(max(1,gen-4*PLOTTIME+1):gen), gen);
+      end
+
+      if ((rem(gen,STATEPLOTTIME) == 0) | (rem(gen,MAXGEN) == 0) | (termopt == 1)) & STATEPLOT,
+         if CODEREAL == 1, PlotChrom = bin2real(Chrom(ixbest,:), VLUBbin);
+         else PlotChrom = Chrom(ixbest,:); end
+         eval(stateplotevalstr);
+      end
+
+   end   % end of while
+
+% return best objective value during optimization
+   [minobjval, posbest] = min(ObjValBest);
+   xnew = IndAllBest(posbest,:);
+
+% Save output/results to file
+   if SAVE2FILE,
+      fprintf(fidgen, '\nBest Objective value:  %g  in Generation %.0d\n', minobjval, posbest);
+      fprintf(fidgen, 'Best Individual:');
+      fprintf(fidgen, '%12.6g', xnew); fprintf(fidgen, '\n\n\n');
+      fclose(fidgen);
+   end
+
+
+% End of function
+

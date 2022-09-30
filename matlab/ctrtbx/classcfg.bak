@@ -1,0 +1,87 @@
+function [acl,bcl,ccl1,dcl1,ccl2,dcl2]=classcfg(x,controller_type,a,b,c,d,e);
+% [acl,bcl,ccl1,dcl1,ccl2,dcl2]=classcfg(x,controller_type,a,b,c,d,e);
+% Create the state matrice of the closed-loop system using 
+% the classical controller with any structure
+%
+% Inputs:
+%    [a,b,c,d,e]     - the state-matrice of the plant 
+%    controller_type - one of the following strings 'p','pi','pid'
+%
+% Outputs: 
+%    [acl,bcl,ccl1,dcl1,ccl2,dcl2] - the state-matrice of the closed-loop system 
+%    TF(r-->y)=[acl,bcl;ccl1,dcl1] - Transfer function from reference to outputs     
+%    TF(r-->u)=[acl,bcl;ccl2,dcl2] - Transfer function from reference to actuator variables
+%          used only to calculate the manipulated variables
+
+% All Rights Reserved, 26.03.96
+% To Thanh Binh IFAT University of Magdeburg Germany
+
+
+if nargin <7, e=[]; end
+if nargin <6, 
+   error('At least five arguments required!')
+end
+if ~isstr(controller_type), 
+   error('The second variable must be the string as p, pi, pid'); 
+end
+
+[n,m]=size(b);[p,n]=size(c);[ne,me]=size(e);
+
+if strcmp(controller_type,'p'),
+    
+    %      ref --->(-)-->P-Controller-->Plant-->*-->y
+    %               |                           |
+    %               |---------------------------|
+    % x(m,r) is the controller parameter
+
+    X1=inv(eye(m)+x*d);
+    acl=a-b*X1*x*c;
+    bcl=b*X1*x;
+    ccl1=(eye(p)-d*X1*x)*c;
+    dcl1=d*X1*x;
+    if me, ecl=e; else, ecl=[]; end 
+    if nargout>4,
+       ccl2=-X1*x*c;
+       dcl2=X1*x;
+    end   
+
+
+elseif strcmp(controller_type,'pi'),
+
+    %      ref --->(-)-->PI-Controller-->Plant-->*-->y
+    %               |                            |
+    %               |----------------------------|
+    % x=[kP(m,p);kI(m,p)] is the controller parameter
+
+    kP=x(1:m,:);kI=x(m+1:2*m,:); 
+    X1=inv(eye(p)+d*kP);
+    acl=[a-b*kP*X1*c,b*(eye(m)-kP*X1*d);-kI*X1*c , -kI*X1*d];
+    bcl=[b*kP*X1;kI*X1];
+    ccl1=[(eye(p)-d*kP*X1)*c,d*(eye(m)-kP*X1*d)];
+    dcl1=d*kP*X1; 
+    if me, ecl=[e;zeros(m,me)]; else ecl=[];end
+    if nargout>4,
+       ccl2=[-kP*X1*c (eye(m)-kP*X1*d)];
+       dcl2=kP*X1;
+    end   
+
+
+elseif strcmp(controller_type,'pid'),
+
+    % x=(s1,s2,s3,s4')  s1,...,s3 is a (m,p)-matrix; s4 is a (p,m)-matrix
+
+    s1=x(:,1:p);s2=x(:,p+1:2*p);s3=x(:,2*p+1:3*p);s4=x(:,3*p+1:4*p)';
+    X1=inv(eye(m)+(s1+s3)*d);
+    acl=[a-b*X1*(s1+s3)*c,b*X1,-b*X1*s3*s4;...
+       -s2*(-eye(p)+d*X1*(s1+s3))*c,-s2*d*X1,s2*d*X1*s3*s4;...
+       -s3*(-eye(p)+d*X1*(s1+s3))*c,-s3*d*X1,(s3*d*X1-eye(m))*s3*s4];
+    bcl=[b*X1*(s1+s3);s2*(eye(p)-d*X1*(s1+s3));s3*(eye(p)-d*X1*(s1+s3))];
+    ccl1=[(eye(p)-d*X1*(s1+s3))*c, d*X1, -d*X1*s3*s4];
+    dcl1=d*X1*(s1+s3);
+    if me, ecl=[e;zeros(2*m,me)]; else ecl=[];end
+    if nargout>4,
+       ccl2=[-X1*(s1+s3)*c, X1, -X1*s3*s4];
+       dcl2=X1*(s1+s3);
+    end   
+
+end

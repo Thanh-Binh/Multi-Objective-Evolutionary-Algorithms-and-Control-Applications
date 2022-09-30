@@ -1,0 +1,39 @@
+function grename(oldname)
+% grename(oldname)
+% GUI for changing the name of a file in the Matlab Workspace
+%
+% See also: MRENAME.M
+
+% All Rights Reserved, 
+% Revision 3.0, Oct. 1996
+% Evolution Strategy Toolbox 1993-96
+% To Thanh Binh University of Magdeburg Germany
+
+% Get a good font for buttons in this platform.
+[fname,fsize] = bestfont(computer);
+Std.Units='norm';
+Std.FontName=fname;
+Std.FontSize=fsize;
+
+choice5('Change the file name',250,150,[.4 .8 .8],'off');
+uicontrol(Std,'Style','text','Pos',[.1 .85 .8 .1],'Back',[.4 .8 .8],...
+   'String','The old name:','Fore','r','HorizontalAlignment','left');
+old=uicontrol(Std,'Style','edit','Pos',[.2 .68 .6 .17],...
+     'String',oldname,'Back','white');
+uicontrol(Std,'Style','text','Pos',[.1 .51 .8 .1],'Back',[.4 .8 .8],...
+   'String','The new name:','Fore','r','HorizontalAlignment','left');
+new=uicontrol(Std,'Style','edit','Pos',[.2 .34 .6 .17],...
+   'String',oldname,'Back','white');
+
+set(gcf,'UserData',[old, new]);
+uicontrol(Std,'Style','push','String','OK',...
+     'Pos',[.6 .05 .2 .15],'callback',[... 
+     'pl=get(gcf,''UserData'');',...
+     'filename=get(pl(2),''string'');oldname=get(pl(1),''string'');',...
+     'if ~strcmp(filename,oldname),',...
+        'mrename(oldname,filename);',...
+     'end,',...
+     'close(gcf)']);
+
+uicontrol(Std,'Style','push','String','Close','Pos',[.2 .05 .2 .15],...
+   'callback','close(gcf)');

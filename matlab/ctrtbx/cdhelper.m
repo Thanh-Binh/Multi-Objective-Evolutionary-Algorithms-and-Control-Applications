@@ -1,0 +1,349 @@
+function cdhelper()
+% Help function written on 09-Apr-1997 at 12:7 by UIHELPMK 
+% This function is not intended to be called directly by users
+%
+% used to display the texts about how to use the uicontrol buttons in
+% the main window of the Controller Design
+% when the current cursor is above the uicontrol buttons in the figure.
+
+
+rootloc = getset(0,'PointerLocation','Units','Points');
+figpos = getset(gcf,'Position','Units','Points');
+loc = (rootloc-figpos(1:2))./figpos(3:4);
+HelpStatus=findobj('tag','DesignHelpStatus');
+hlpstr='Wellcome to Multiobjective Controller Design';
+UITag='';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: PolRegionName %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if(uh_isin(loc,[0.012000 0.084000 0.264000 0.080000]))
+	hlpstr='Requirements in terms of a Pole Region';
+	UITag='PolRegionName';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: PolRegionOK %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.084000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='PolRegionOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: PolRegionConst %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.084000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='PolRegionConst';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: PolRegionObj %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.084000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='PolRegionObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: SSErrorName %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.012000 0.269000 0.264000 0.080000]))
+	hlpstr='Requirement on the Steady State Error';
+	UITag='SSErrorName';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: SSErrorOK %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.269000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='SSErrorOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: SSErrorConst %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.269000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='SSErrorConst';
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: SSErrorObj %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.269000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='SSErrorObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: Time2PeakName %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.012000 0.349000 0.264000 0.080000]))
+	hlpstr='Requirement on the Time to Peak';
+	UITag='Time2PeakName';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: Time2PeakOK %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.349000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='Time2PeakOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: Time2PeakConst %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.349000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='Time2PeakConst';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: Time2PeakObj %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.349000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='Time2PeakObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: OverShootName %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.012000 0.429000 0.264000 0.080000]))
+	hlpstr='Requirement on the Over Shoot';
+	UITag='OverShootName';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: OverShootOK %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.429000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='OverShootOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: OverShootConst %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.429000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='OverShootConst';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: OverShootObj %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.429000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='OverShootObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: SettlingTimeName %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.012000 0.509000 0.264000 0.080000]))
+	hlpstr='Requirement on the Settling Time';
+	UITag='SettlingTimeName';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: SettlingTimeOK %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.509000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='SettlingTimeOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: SettlingTimeConst %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.509000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='SettlingTimeConst';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: SettlingTimeObj %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.509000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='SettlingTimeObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: RiseTimeName %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.012000 0.588000 0.264000 0.080000]))
+	hlpstr='Requirement on the Rise Time';
+	UITag='RiseTimeName';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: RiseTimeOK %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.588000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='RiseTimeOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: RiseTimeConst %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.588000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='RiseTimeConst';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: RiseTimeObj %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.588000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='RiseTimeObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: OutputName %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.012000 0.668000 0.264000 0.080000]))
+	hlpstr='Requirement on the Plant Outputs';
+	UITag='OutputName';
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: OutputOK %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.668000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='OutputOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: OutputConst %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.668000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='OutputConst';
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: OutputObj %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.668000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='OutputObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: ManipName %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.012000 0.748000 0.264000 0.080000]))
+	hlpstr='Requirement on the Plant Inputs';
+	UITag='ManipName';
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: ManipOK %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.452600 0.748000 0.043200 0.080000]))
+	hlpstr='To confirm the constraint formulation and to give boundaries';
+	UITag='ManipOK';
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: ManipConst %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.368800 0.748000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of a constraint';
+	UITag='ManipConst';
+
+%%%%%%%%%%%%%%%%%%%%%%
+% checkbox: ManipObj %
+%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.284000 0.748000 0.076800 0.080000]))
+	hlpstr='Formulation in terms of an objective';
+	UITag='ManipObj';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% frame: DesignInOutIndex %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.515000 0.075000 0.475000 0.150000]))
+	hlpstr='Input a vector including the index for considered signals <ENTER>';
+	UITag='DesignInOutIndex';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: DesignPlant %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.781600 0.345000 0.155200 0.130000]))
+	hlpstr='Click here to load State-Space Matrice of a plant';
+	UITag='DesignPlant';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% popupmenu: DesignCtrlType %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.582750 0.345000 0.155200 0.130000]))
+	hlpstr='Choosing the desired controller type';
+	UITag='DesignCtrlType';
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% edit: DesignFunName %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.550000 0.600000 0.170000 0.090000]))
+	hlpstr='The name of a temporary objective function for optimization';
+	UITag='DesignFunName';
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: DesignSimulation %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.780000 0.600000 0.170000 0.090000]))
+	hlpstr='For simulation of the closed-loop system';
+	UITag='DesignSimulation';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: DesignStart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.780000 0.740000 0.170000 0.090000]))
+	hlpstr='Start an optimization routine for design';
+	UITag='DesignStart';
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: CDClose %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.780000 0.880000 0.170000 0.090000]))
+	hlpstr='Close this window and finish design';
+	UITag='CDClose';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: DesignInfos %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.550000 0.740000 0.170000 0.090000]))
+	hlpstr='To get informations about the toolbox';
+	UITag='DesignInfos';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushbutton: DesignHelp %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+elseif(uh_isin(loc,[0.550000 0.880000 0.170000 0.090000]))
+	hlpstr='Help to use this toolbox';
+	UITag='DesignHelp';
+
+end
+if strcmp(get(findobj(gcf,'tag',UITag),'Visible'),'on'),
+    set(HelpStatus,'String',hlpstr);
+end

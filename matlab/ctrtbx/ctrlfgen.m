@@ -1,0 +1,725 @@
+function ctrlfgen(Plant,ControllerType,PerformType,PerformIndx,ConstrVal,PoleRegion,W1,W2,FunName)
+% ctrlfgen(Plant,ControllerType,PerformType,PerformIndx,ConstrVal,PoleRegion,W1,W2,FunName)
+% 
+% mpar=[mmodel,nstates,ninput,noutput,me];
+% It is not inteded to be directly called from users.
+
+% All Rights Reserved, 
+% Revision 3.0, Oct. 1996
+% Control System Design Toolbox 1993-96
+% To Thanh Binh University of Magdeburg Germany 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Begin creating the main file for the optimization
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Create the main objective function for the optimization
+% from all the above design options
+     
+FunName1=[FunName,'.m'];
+while exist(FunName1,'file'), delete(FunName1),end
+fid=fopen(FunName1,'wt');
+time=clock;
+
+output=Plant.output;
+ssval=Plant.ssval;
+mpar=Plant.dim;
+
+multi_model=mpar(1)>1;
+
+
+if ~isempty(PerformIndx),
+   cl_obj     = PerformIndx(1,find(PerformIndx(2,:)==1));
+   cl_cons    = PerformIndx(1,find(PerformIndx(2,:)==0));
+   num_cl_obj = length(cl_obj);       % number of the classical objectives
+   num_cl_cons= length(cl_cons);      % number of the classical constraints
+
+   PerformIndx     = PerformIndx(1,:);
+   ManipPerfExist  = ~isempty(find(PerformIndx==1));
+   PoleRegionExist = ~isempty(find(PerformIndx==8));
+   ClassicPerfExist= 1;
+else
+   cl_obj        =[];
+   cl_cons       =[];
+   num_cl_obj    =0; 
+   num_cl_cons   =0;
+   ManipPerfExist=0;ClassicPerfExist=0;PoleRegionExist=0;
+end
+
+ 
+% write the head of the function
+
+fprintf(fid,'%s\n',['function fun=',FunName,'(xp)']);
+fprintf(fid,'%s\n','% Temporary main function for computing the design performances');
+fprintf(fid,'%s\n\n',['% Written on ', date,' at ',num2str(time(4)),':',num2str(time(5)),' by Multiobjective Controller Design Toolbox']);
+
+
+fprintf(fid,'%s\n','% Construct the state matrice A,B,C,D,E');
+txt=mat2text(Plant.a,'a=');
+[nrows,ncols]=size(txt);txt(:,ncols+1)=10*ones(nrows,1);
+fprintf(fid,'%s\n',txt');
+
+txt=mat2text(Plant.b,'b=');
+[nrows,ncols]=size(txt);txt(:,ncols+1)=10*ones(nrows,1);
+fprintf(fid,'%s\n',txt');
+
+txt=mat2text(Plant.c,'c=');
+[nrows,ncols]=size(txt);txt(:,ncols+1)=10*ones(nrows,1);
+fprintf(fid,'%s\n',txt');
+
+txt=mat2text(Plant.d,'d=');
+[nrows,ncols]=size(txt);txt(:,ncols+1)=10*ones(nrows,1);
+fprintf(fid,'%s\n',txt');
+
+if ~isempty(Plant.e),
+   txt=mat2text(Plant.e,'e=');
+   [nrows,ncols]=size(txt);txt(:,ncols+1)=10*ones(nrows,1);
+   fprintf(fid,'%s\n',txt');
+else,
+   fprintf(fid,'%s\n','e=[];');
+end
+
+
+if multi_model,
+   if mpar(5),
+      fprintf(fid,'%s\n',['n=',num2str(mpar(2)),';','m=',num2str(mpar(3)),';','me=',num2str(mpar(5)),';']);
+   else,
+      fprintf(fid,'%s\n',['n=',num2str(mpar(2)),';','m=',num2str(mpar(3)),';']);
+   end
+
+   if ~strcmp(ControllerType(1:2),'PI'), % a modern controller exists
+      txttmp=['p=',num2str(mpar(1)),';fcost=zeros(',num2str(mpar(1)),',1);'];
+   else,
+      txttmp=['p=',num2str(mpar(1)),';'];
+   end 
+   if num_cl_obj, txttmp=[txttmp,'fun=zeros(',num2str(num_cl_obj+1),',',num2str(mpar(1)),');'];end
+   fprintf(fid,'%s\n',txttmp);
+end
+
+
+hspace='';
+
+if strcmp(ControllerType,'LSDP')|strcmp(ControllerType,'Hinf'),
+   % construct the weighting functions W1 and W2
+   w1w2gen(fid,W1,W2);
+   if strcmp(ControllerType,'Hinf'),
+      fprintf(fid,'%s\n',['aw3=[];bw3=[];cw3=[];dw3=1e-6*eye(',num2str(mpar(3)),');']);
+      fprintf(fid,'%s\n','% W3 is used for manipulated variables so that D12 of ');
+      fprintf(fid,'%s\n','% the augmented plant has full column rank');
+   end
+end
+
+
+if multi_model,
+   hspace='    ';
+   if ~mpar(5),  fprintf(fid,'%s\n\n','ei=[];'); end
+   fprintf(fid,'%s\n','for j=1:p,');
+   fprintf(fid,'%s\n',[hspace,'ai=a(:,(j-1)*n+1:j*n);bi=b(:,(j-1)*m+1:j*m);ci=c(:,(j-1)*n+1:j*n);']);
+   txttmp=[hspace,'di=d(:,(j-1)*m+1:j*m);'];
+   if mpar(5),
+      txttmp=[txttmp,'ei=e(:,(j-1)*me+1:j*me);'];
+   end
+   fprintf(fid,'%s\n\n',txttmp);
+
+   if ManipPerfExist,             % exist requirements for manipulation variables
+      if strcmp(ControllerType,'PI'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,ccl2,dcl2]=classcfg(xp,''pi'',ai,bi,ci,di,ei);']); 
+      elseif strcmp(ControllerType,'PID'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,ccl2,dcl2]=classcfg(xp,''pid'',ai,bi,ci,di,ei);']); 
+      elseif strcmp(ControllerType,'LQG'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese,ccl2,dcl2]=moderncfg(xp,''lqg'',ai,bi,ci,di);']); 
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost(j)=fsynthese(2);']);
+      elseif strcmp(ControllerType,'Hinf'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese,ccl2,dcl2]=hinfcont(ai,bi,ci,di,aw1,bw1,cw1,dw1,aw3,bw3,cw3,dw3,aw2,bw2,cw2,dw2);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost(j)=fsynthese(2);']);
+
+      elseif strcmp(ControllerType,'LSDP'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese,ccl2,dcl2]=lsdpcfg(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,ai,bi,ci,di);']);
+         %fprintf(fid,'%s\n',[hspace,'[ak,bk,ck,dk,fsynthese]=lsdpcont(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,ai,bi,ci,di);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost(j)=fsynthese(2);']);
+         %fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,ccl2,dcl2]=tdofcfg(ai,bi,ci,di,ak,bk,ck,dk);']);
+
+      end 
+   else,
+      if strcmp(ControllerType,'PI'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl]=classcfg(xp,''pi'',ai,bi,ci,di,ei);']); 
+      elseif strcmp(ControllerType,'PID'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl]=classcfg(xp,''pid'',ai,bi,ci,di,ei);']); 
+      elseif strcmp(ControllerType,'LQG'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese]=moderncfg(xp,''lqg'',ai,bi,ci,di);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,'])  ;
+         fprintf(fid,'%s\n',[hspace,'fcost(j)=fsynthese(2); ']); 
+      elseif strcmp(ControllerType,'Hinf'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese]=hinfcont(ai,bi,ci,di,aw1,bw1,cw1,dw1,aw3,bw3,cw3,dw3,aw2,bw2,cw2,dw2);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost(j)=fsynthese(2);']);
+      elseif strcmp(ControllerType,'LSDP'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese]=lsdpcfg(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,ai,bi,ci,di);']);
+         %fprintf(fid,'%s\n',[hspace,'[ak,bk,ck,dk,fsynthese]=lsdpcont(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,ai,bi,ci,di);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,'])  ;
+         fprintf(fid,'%s\n',[hspace,'fcost(j)=fsynthese(2); ']);
+         %fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl]=tdofcfg(ai,bi,ci,di,ak,bk,ck,dk);']);
+
+      end 
+   end
+   
+else,
+   if ManipPerfExist,          % exist requirements for manipulation variables
+      if strcmp(ControllerType,'PI'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,ccl2,dcl2]=classcfg(xp,''pi'',a,b,c,d,e);']); 
+      elseif strcmp(ControllerType,'PID'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,ccl2,dcl2]=classcfg(xp,''pid'',a,b,c,d,e);']); 
+      elseif strcmp(ControllerType,'LQG'),
+         fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese,ccl2,dcl2]=moderncfg(xp,''lqg'',a,b,c,d);']); 
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost=fsynthese(2);']);
+      elseif strcmp(ControllerType,'Hinf'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese,ccl2,dcl2]=hinfcont(a,b,c,d,aw1,bw1,cw1,dw1,aw3,bw3,cw3,dw3,aw2,bw2,cw2,dw2);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost=fsynthese(2);']);
+      elseif strcmp(ControllerType,'LSDP'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese,ccl2,dcl2]=lsdpcfg(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,a,b,c,d);']);
+         %fprintf(fid,'%s\n',[hspace,'[ak,bk,ck,dk,fsynthese]=lsdpcont(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,a,b,c,d);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost=fsynthese(2);']);
+         %fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl,ccl2,dcl2]=tdofcfg(a,b,c,d,ak,bk,ck,dk);']);
+
+      end 
+   else,
+      if strcmp(ControllerType,'PI'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl]=classcfg(xp,''pi'',a,b,c,d,e);'],''); 
+      elseif strcmp(ControllerType,'PID'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl]=classcfg(xp,''pid'',a,b,c,d,e);'],'');
+      elseif strcmp(ControllerType,'LQG'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese]=moderncfg(xp,''lqg'',a,b,c,d);'],''); 
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost=fsynthese(2); ']);
+      elseif strcmp(ControllerType,'Hinf'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese]=hinfcfg(a,b,c,d,aw1,bw1,cw1,dw1,aw3,bw3,cw3,dw3,aw2,bw2,cw2,dw2);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost=fsynthese(2);']);
+      elseif strcmp(ControllerType,'LSDP'),
+         fprintf(fid,'%s\n',[hspace,'[acl,bcl,ccl,dcl,fsynthese]=lsdpcfg(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,a,b,c,d);']);
+         %fprintf(fid,'%s\n',[hspace,'[ak,bk,ck,dk,fsynthese]=lsdpcont(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,a,b,c,d);']);
+         fprintf(fid,'%s\n',[hspace,'if ~fsynthese(1),fun=inf; return,end,']);
+         fprintf(fid,'%s\n',[hspace,'fcost=fsynthese(2); ']);
+         %fprintf(fid,'%s\n\n',[hspace,'[acl,bcl,ccl,dcl]=tdofcfg(a,b,c,d,ak,bk,ck,dk);']);
+
+      end 
+   end
+end
+
+
+if ClassicPerfExist, % requirements about classical performances
+
+   fprintf(fid,'%s\n',[hspace,'% When the closed-loop is unstable, this function can still return']);
+   fprintf(fid,'%s\n',[hspace,'% performance indices without simulation']);
+   fprintf(fid,'%s\n',[hspace,'[ncl,mcl]=size(acl);o=eig(acl);stmarg=max(real(o)); % stability margin']);
+   fprintf(fid,'%s\n',[hspace,'if stmarg>=0,']);
+   if num_cl_cons,
+      txttemp='1e20; ';
+   else,
+      txttemp='0; ';
+   end
+   if num_cl_obj,
+      if ~strcmp(ControllerType(1:2),'PI'), % a modern controller exists
+         txttmp=[hspace,'    fun=[',txttemp,'(1e6+stmarg)*ones(',num2str(num_cl_obj+1),',1)];'];
+      else,
+         if num_cl_obj==1,
+            txttmp=[hspace,'    fun=[',txttemp,'(1e6+stmarg);]'];
+         else,
+            txttmp=[hspace,'    fun=[',txttemp,'(1e6+stmarg)*ones(',num2str(num_cl_obj),',1)];'];
+         end
+      end
+   else,
+      if ~strcmp(ControllerType(1:2),'PI'), % a modern controller exists
+         txttmp=[hspace,'    fun=[',txttemp,'(1e6+stmarg)];'];
+      else,
+         txttmp=[hspace,'    fun=',txttemp,';'];
+      end
+   end
+
+   fprintf(fid,'%s\n',txttmp);
+
+   fprintf(fid,'%s\n',[hspace,'    return,']);
+   fprintf(fid,'%s\n\n',[hspace,'end']);
+
+   if multi_model,
+      if PoleRegionExist,
+         if ManipPerfExist,
+            fprintf(fid,'%s\n',[hspace,'fun(:,j)=',FunName,'1(acl,bcl,ccl,dcl,ccl2,dcl2,o,ncl);']);
+         else,
+            fprintf(fid,'%s\n',[hspace,'fun(:,j)=',FunName,'1(acl,bcl,ccl,dcl,o,ncl);']);
+         end
+      else, 
+         if ManipPerfExist, 
+            fprintf(fid,'%s\n',[hspace,'fun(:,j)=',FunName,'1(acl,bcl,ccl,dcl,ccl2,dcl2);']);
+         else,
+            fprintf(fid,'%s\n',[hspace,'fun(:,j)=',FunName,'1(acl,bcl,ccl,dcl);']);
+         end
+      end
+   else,
+      if PoleRegionExist,
+         if ManipPerfExist,
+            fprintf(fid,'%s\n',[hspace,'fun=',FunName,'1(acl,bcl,ccl,dcl,ccl2,dcl2,o,ncl);']);
+         else,
+            fprintf(fid,'%s\n',[hspace,'fun=',FunName,'1(acl,bcl,ccl,dcl,o,ncl);']);
+         end
+      else, 
+         if ManipPerfExist, 
+            fprintf(fid,'%s\n',[hspace,'fun=',FunName,'1(acl,bcl,ccl,dcl,ccl2,dcl2);']);
+         else,
+            fprintf(fid,'%s\n',[hspace,'fun=',FunName,'1(acl,bcl,ccl,dcl);']);
+         end
+      end
+   end
+end
+
+if multi_model,
+   fprintf(fid,'%s\n','end');
+   if ~strcmp(ControllerType(1:2),'PI'), % a modern controller exists
+      if num_cl_obj, % objective requirements about classical performances
+         txttmp='fun=[max(fun,[],2);max(fcost)];';
+      else,
+         txttmp='fun=max(fcost);';
+      end
+      fprintf(fid,'%s\n',txttmp);
+   else,
+      if num_cl_obj, % objective requirements about classical performances
+         fprintf(fid,'%s\n','fun=max(fun,[],2);');
+      end
+   end
+else,
+   if ~strcmp(ControllerType(1:2),'PI'), % a modern controller exists
+      if num_cl_obj, % objective requirements about classical performances
+         txttmp='fun=[fun;fcost];';
+      else,
+         txttmp='fun=fcost;';
+      end
+      fprintf(fid,'%s\n',txttmp);
+   end
+end
+fprintf(fid,'%s\n','');
+fprintf(fid,'%s\n','% End of the main function');
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% End creating the main file for the optimization
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if isempty(PerformIndx),           % not requirements about classical performances
+                                   % it is not necessary to create the file 'ctrlftmp.m'
+                                   % i.e. stop here
+   fclose(fid)
+   return,
+else,
+   fprintf(fid,'%s\n\n\n','');
+   fprintf(fid,'%s\n','%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
+   fprintf(fid,'%s\n','%         Begin of the subfunction       %');
+   fprintf(fid,'%s\n','%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Create the suitable objective function for computation
+% all classical performance indices 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+     
+
+% write the head of the function
+if PoleRegionExist,
+   if ManipPerfExist, 
+      fprintf(fid,'%s\n\n\n',['function fun=',FunName,'1(acl,bcl,ccl,dcl,ccl2,dcl2,o,ncl)']);
+      fprintf(fid,'%s\n','sys{1}=acl;sys{2}=bcl;sys{3}=ccl;sys{4}=dcl;sys{5}=ccl2;sys{6}=dcl2;');
+   else, 
+      fprintf(fid,'%s\n\n\n',['function fun=',FunName,'(acl,bcl,ccl,dcl,o,ncl)']);
+      fprintf(fid,'%s\n','sys{1}=acl;sys{2}=bcl;sys{3}=ccl;sys{4}=dcl;');
+   end
+else,
+   if ManipPerfExist,
+      fprintf(fid,'%s\n\n\n',['function fun=',FunName,'1(acl,bcl,ccl,dcl,ccl2,dcl2)']);
+      fprintf(fid,'%s\n','sys{1}=acl;sys{2}=bcl;sys{3}=ccl;sys{4}=dcl;sys{5}=ccl2;sys{6}=dcl2;');
+
+   else, 
+      fprintf(fid,'%s\n\n\n',['function fun=',FunName,'1(acl,bcl,ccl,dcl)']);
+      fprintf(fid,'%s\n','sys{1}=acl;sys{2}=bcl;sys{3}=ccl;sys{4}=dcl;');
+
+   end
+end
+
+% write the subprogram to handle the classical requirements
+
+fprintf(fid,'%s\n',['output=',mat2str(output),';']);
+fprintf(fid,'%s\n',['sslevel=',mat2str(ssval),';']);
+
+
+fprintf(fid,'%s\n','% Simulation of the closed-loop system');
+fprintf(fid,'%s\n\n','[ysys,usys,t]=ctr_step(sys,output,sslevel);');
+
+
+% write the program to check classical constraints if it's neccessary
+if num_cl_cons,
+   RealNumConstr=0; 
+   for i=1:num_cl_cons,
+      ClConsi=cl_cons(i);
+      PerformTypeTmp=PerformType{ClConsi};PerformTypeTmp(1)=[];
+      switch ClConsi,
+         case 1,
+            fprintf(fid,'%s\n','% Compute constraints on the Manipulated Variables');
+            fprintf(fid,'%s\n\n',['gconstmp=manipv(usys,',num2str(PerformTypeTmp),');']);
+
+         case 2,
+            fprintf(fid,'%s\n','% Compute constraints on the Output Variables');
+            fprintf(fid,'%s\n\n',['gconstmp=outputv(ysys,',num2str(PerformTypeTmp),');']);
+
+         case 3,
+            fprintf(fid,'%s\n','% Compute constraints on the Rise Time');
+            fprintf(fid,'%s\n\n',['gconstmp=risetime(ysys,t,',num2str(PerformTypeTmp),',sslevel);']);
+              
+         case 4,
+            fprintf(fid,'%s\n','% Compute constraints on the Settling Time');
+            fprintf(fid,'%s\n\n',['gconstmp=settling(ysys,t,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 5,
+            fprintf(fid,'%s\n','% Compute constraints on the Overshoot');
+            fprintf(fid,'%s\n\n',['gconstmp=oversh(ysys,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 6,
+            fprintf(fid,'%s\n','% Compute constraints on the Time to Peak');
+            fprintf(fid,'%s\n\n',['gconstmp=t2peak(ysys,t,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 7,
+            fprintf(fid,'%s\n','% Compute constraints on the Steady-State Error');
+            fprintf(fid,'%s\n\n',['gconstmp=sserror(ysys,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 8,
+            fprintf(fid,'%s\n','% Compute constraints on the pole region defined by');
+            polestr(fid,PoleRegion,hspace,'gconstmp');
+      end
+      if ClConsi==8,
+         inew=1;
+         fprintf(fid,'%s\n',['gcons(',num2str(RealNumConstr+1),')=gconstmp-1;']);
+      elseif (ClConsi==2)|(ClConsi==1),
+         % both the lower and upper bounds exist
+         if length(PerformTypeTmp)==1,
+             fprintf(fid,'%s\n',['gconstmp=gconstmp(:,',num2str(PerformTypeTmp),');']);
+         else,
+             fprintf(fid,'%s\n',['gconstmp=gconstmp(:,',mat2str(PerformTypeTmp),');']);
+         end 
+         ConstrVali=ConstrVal{cl_cons(i)};
+         LInfIndx=find(ConstrVali(1,:)~=inf|ConstrVali(1,:)~=-inf); 
+         ilow=length(LInfIndx);
+         UInfIndx=find(ConstrVali(2,:)~=inf|ConstrVali(2,:)~=-inf); 
+         iup=length(UInfIndx);
+         if ilow==1, 
+            fprintf(fid,'%s\n',['gcons(',num2str(RealNumConstr+1),...
+               ')=-gconstmp(1,',num2str(LInfIndx),')+(',num2str(ConstrVali(1,LInfIndx)),');']);
+         elseif ilow >1,
+            fprintf(fid,'%s\n',['gcons(',num2str(RealNumConstr+1),':',...
+                num2str(RealNumConstr+ilow),...
+                ')=-gconstmp(1,',mat2str(LInfIndx),')+',mat2str(ConstrVali(1,LInfIndx)),';']);
+         end
+         if iup==1,
+            fprintf(fid,'%s\n',['gcons(',num2str(RealNumConstr+ilow+1),...
+                ')=gconstmp(2,',num2str(UInfIndx),')-(',num2str(ConstrVali(2,UInfIndx)),');']);
+         elseif iup>1,
+            fprintf(fid,'%s\n',['gcons(',num2str(RealNumConstr+ilow+1),':',...
+                num2str(RealNumConstr+ilow+iup),...
+                ')=gconstmp(2,',mat2str(UInfIndx),')-',mat2str(ConstrVali(2,UInfIndx)),';']);
+         end
+         inew=ilow+iup;
+      else,
+         % Only upper bounds exist, therefore ConstrVali is only a row-vector
+         if length(PerformTypeTmp)==1,
+             fprintf(fid,'%s\n',['gconstmp=gconstmp(:,',num2str(PerformTypeTmp),');']);
+         else,
+             fprintf(fid,'%s\n',['gconstmp=gconstmp(:,',mat2str(PerformTypeTmp),');']);
+         end 
+         ConstrVali=ConstrVal{cl_cons(i)}; 
+         iup=length(ConstrVali);
+         if iup==1,
+            fprintf(fid,'%s\n',['gcons(',num2str(RealNumConstr+1),...
+                ')=gconstmp-(',num2str(ConstrVali),');']);
+         elseif iup>1,
+            fprintf(fid,'%s\n',['gcons(',num2str(RealNumConstr+1),':',...
+                num2str(RealNumConstr+iup),...
+                ')=gconstmp-',mat2str(ConstrVali(2,UInfIndx)),';']);
+         end
+         inew=iup;
+      end 
+
+      RealNumConstr=RealNumConstr+inew; 
+ 
+   end
+   fprintf(fid,'%s\n\n','% End of the compute and check for constraints');     
+end
+
+
+% write the program to compute classical objectives if it's neccessary
+if num_cl_obj,
+   fprintf(fid,'%s\n',' ');
+   fprintf(fid,'%s\n\n','% Compute the performance objectives' );
+   hspace='';
+
+   if num_cl_obj==1,
+      funtxt=[hspace,'fun'];
+   else,
+      fprintf(fid,'%s\n',[hspace,'fun=zeros(',num2str(num_cl_obj),',1);']);
+   end 
+
+   for i=1:num_cl_obj,
+      if  num_cl_obj > 1, funtxt=['fun(',num2str(i),')']; end
+      ClObji=cl_obj(i);
+      PerformTypeTmp=PerformType{ClObji};
+      PerformTypeTmp(1)=[];
+
+      switch ClObji,
+         case 1,
+            fprintf(fid,'%s\n',[hspace,'% for the Manipulated Variables']);
+            fprintf(fid,'%s\n\n',['ftmp= manipv(usys,',num2str(PerformTypeTmp),');']);
+            fprintf(fid,'%s\n\n',[funtxt,'=max(max(abs(ftmp)));']);
+
+         case 2,
+            fprintf(fid,'%s\n',[hspace,'% for the Output Variables']);
+            fprintf(fid,'%s\n',['ftmp= outputv(ysys,',num2str(PerformTypeTmp),',sslevel);']);
+            fprintf(fid,'%s\n\n',[funtxt,'=max(max(abs(ftmp)));']);
+
+         case 3,
+            fprintf(fid,'%s\n',[hspace,'% for the Rise Time']);
+            fprintf(fid,'%s\n\n',[funtxt,'=risetime(ysys,t,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 4,
+            fprintf(fid,'%s\n',[hspace,'% for the Settling Time']);
+            fprintf(fid,'%s\n\n',[funtxt,'= settling(ysys,t,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 5,
+            fprintf(fid,'%s\n',[hspace,'% for the Overshoot']);
+            fprintf(fid,'%s\n\n',[funtxt,'= oversh(ysys,',num2str(PerformTypeTmp),',sslevel);']);;
+
+         case 6,
+            fprintf(fid,'%s\n',[hspace,'% for the Time to Peak']);
+            fprintf(fid,'%s\n\n',[funtxt,'= t2peak(ysys,t,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 7,
+            fprintf(fid,'%s\n',[hspace,'% for the Steady-State Error']);
+            fprintf(fid,'%s\n\n',[funtxt,'=sserror(ysys,',num2str(PerformTypeTmp),',sslevel);']);
+
+         case 8,
+            fprintf(fid,'%s\n',[hspace,'% for the pole region defined by']);
+            polestr(fid,PoleRegion,hspace,funtxt);
+      end
+   end
+end
+
+if num_cl_cons,
+   fprintf(fid,'%s\n','gcons=sum((abs(gcons).*(gcons > 1e-7)).^2);');
+   fprintf(fid,'%s\n','fun=[gcons;fun];');
+else
+   if num_cl_obj,
+      fprintf(fid,'%s\n','fun=[0;fun];');
+   end
+end
+
+fprintf(fid,'%s\n','%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
+fprintf(fid,'%s\n','%          End of the subfunction        %');
+fprintf(fid,'%s\n','%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Generate subsubfunctions if it's necessary %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ~isempty(PerformIndx),
+   PerformIndx=PerformIndx(1,:);
+   PerfNum=length(PerformIndx);
+   for i=1:PerfNum,
+      Perform=PerformIndx(i);
+      switch Perform
+         case 1
+            txt=[...
+            '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'...
+            'function u_bound=manipv(u,index)\n'...   
+            '%% u_bound=manipv(u,index)\n'... 
+            '%%\n'...            
+            '%% U     - plant input responses \n'...
+            '%% INDEX - an index vector of the considered plant inputs \n'...
+            '%% Return the lower and upper boundaries of the input variables in the \n'...
+            '%% matrix U_BOUND =[LowerBounds;UpperBounds]\n\n\n'...
+            'nu=length(index);\n'...
+            'u_bound=zeros(2,nu);\n'...
+            'for i=1:nu,\n'...
+            '   unew=u{index(i)};  \n'...
+            '   u_bound(:,i)=[min(min(unew));max(max(unew))];\n'...
+            'end\n\n'];
+
+         case 2
+            txt=[...
+            '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'...
+            'function y_bound=outputv(y,index)\n'...   
+            '%% y_bound=outputv(y,index)\n'...
+            '%%\n'...            
+            '%% Y     - plant output responses\n'...
+            '%% INDEX - an index vector of the considered plant outputs\n'...
+            '%% Return the lower and upper boundaries of the output variables in the\n'...
+            '%% matrix Y_BOUND =[LowerBounds;UpperBounds]\n\n\n'...
+            'nout=length(index);\n'...
+            'y_bound=zeros(2,nout);\n'...
+            'for i=1:nout,\n'...
+            '   ynew=y{index(i)};  \n'...
+            '   y_bound(:,i)=[min(min(ynew));max(max(ynew))];\n'...
+            'end\n\n'];
+
+         case 3
+            txt=[...
+            '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'...
+            'function rt=risetime(y,t,index,sslevel,pclevel)\n'...
+            '%% rt=risetime(y,t,index,sslevel,pclevel)\n'...                                                             
+            '%%\n'...            
+            '%% Y       - plant output responses\n'...
+            '%% T       - time\n'...
+            '%% INDEX   - an index vector of the considered plant outputs\n'...
+            '%% SSLEVEL - the steady-state values of the outputs\n'...
+            '%% It returns the PCLEVEL (default is 90%%) rise-time of the time \n'...
+            '%% response Y with time T when the steady state value of the \n'...
+            '%% output is SSLEVEL (default is unity). Interpolation is \n'...
+            '%% performed between time points to find the correct values.\n\n'...
+            'if nargin<5, pclevel=90; end %% 90 percent default\n'...
+            'if nargin<4,  sslevel=1; end %% steady state value  default\n\n'...
+            'level=0.01*pclevel*sslevel;\n'...
+            'nout=length(index);\n'...
+            'rt=zeros(1,nout);tmax=max(t);\n'...
+            'for i=1:nout,\n'...
+            '   ynew=y{index(i)}(:,index(i));  \n'...
+            '   %% only i-th output response respect to the corresponding i-th\n'...
+            '   %% reference signal should be considered here\n'...
+            '   yrt=min(find(ynew>level));\n'...
+            '   if ~isempty(yrt),\n'...
+            '      if yrt>1,\n'...
+            '         rt2=t(yrt);\n'...
+            '         rt1=t(yrt-1);\n'...
+            '         rt(i)=rt2-((ynew(yrt)-level)/(ynew(yrt)-ynew(yrt-1)))*(rt2-rt1);\n'...
+            '      else,\n'...
+            '         %% output does not reach pclevel\n'...
+            '         rt(i)=t(yrt);\n'...
+            '      end\n'...
+            '   else,\n'...
+            '      rt(i)=tmax;\n'...
+            '   end\n'...
+            'end\n\n'];
+
+         case 4
+            txt=[...
+            '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'...
+            'function st=settling(y,t,index,sslevel,pclevel)\n'...
+            '%% st=settling(y,t,index,sslevel,pclevel)\n'...
+            '%%\n'...
+            '%% Y       - plant output responses\n'...
+            '%% T       - time\n'...
+            '%% INDEX   - an index vector of the considered plant outputs\n'...
+            '%% SSLEVEL - the steady-state values of the outputs\n'...
+            '%% It returns the PCLEVEL (default is 90%%) settling time of the time \n'...
+            '%% response Y with time T when the steady state value of the \n'...
+            '%% output is SSLEVEL (default is unity). Interpolation is \n'...
+            '%% performed between time points to find the correct values.\n\n'...
+            'if nargin<5, pclevel=5; end %% 5 percent default\n'...
+            'if nargin<4,  sslevel=1; end %% steady state value  default\n\n'...
+            'level=0.01*pclevel;\n'...
+            'nout=length(index);\n'...
+            'st=zeros(1,nout);\n'...
+            'tlength=length(t);\n'...
+            'for i=1:nout,\n'...
+            '   ynew=y{index(i)}(:,index(i));  \n'...
+            '   %% only i-th output response respect to the corresponding i-th\n'...
+            '   %% reference signal should be considered here\n'...
+            '   %% Find highest point where abs(output-sslevel) larger than level \n'...
+            '   yst=max(find((abs(ynew-sslevel)/sslevel)>level));\n'...
+            '   %% now interpolate\n'...
+            '   if ~isempty(yst),\n'...
+            '     if yst<tlength,\n'...
+            '       st1=t(yst);\n'...
+            '       st2=t(yst+1);\n'...
+            '       st(i)=st1+((abs(ynew(yst)-sslevel)-level)/abs(ynew(yst)-ynew(yst+1)) )*(st2-st1);\n'...
+            '     else\n'...
+            '       %% output does not settle\n'...
+            '       st(i)=t(yst);\n'...
+            '     end\n'...
+            '   else,\n'...
+            '       st(i)=t(tlength);\n'...
+            '   end\n'...
+            'end\n\n'];
+            
+         case 5
+            txt=[...
+            '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'...
+            'function os=oversh(y,index,sslevel)\n'...   
+            '%% os=oversh(y,index,sslevel)\n'...
+            '%%\n'...
+            '%% Y       - plant output responses\n'...
+            '%% INDEX   - an index vector of the considered plant outputs\n'...
+            '%% SSLEVEL - the steady-state values of the outputs\n'...
+            '%% Return the lower and upper boundaries of the percent overshoot of\n'...
+            '%% the output variables in a vector OS\n\n'...
+            'if nargin<3,  sslevel=1; end %% steady state value  default\n'...
+            'nout=length(index);\n'...
+            'os=zeros(1,nout);\n'...
+            'for i=1:nout,\n'...
+            '   ynew=y{index(i)}(:,index(i));  \n'...
+            '   %% only i-th output response respect to the corresponding i-th\n'...
+            '   %% reference signal should be considered here\n'...
+            '   ostmp = 100*(max(ynew) - sslevel)/sslevel;\n'...
+            '   os(i)=max([0,ostmp]);\n'...
+            'end\n\n'];
+
+         case 6
+            txt=[...
+            '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'...
+            'function tp=t2peak(y,t,index,sslevel)\n'...   
+            '%% tp=t2peak(y,t,index,sslevel)\n'...
+            '%%\n'...
+            '%% Y       - plant output responses\n'...
+            '%% T       - time\n'...
+            '%% INDEX   - an index vector of the considered plant outputs\n'...
+            '%% SSLEVEL - the steady-state values of the outputs\n'...
+            '%% Return the time to peak\n\n'...
+            'if nargin<4,  sslevel=1; end %% steady state value  default\n'...
+            'nout=length(index);\n\n'...
+            'tp=zeros(1,nout);\n'...
+            'for i=1:nout,\n'...
+            '   ynew=y{index(i)}(:,index(i));  \n'...
+            '   %% only i-th output response respect to the corresponding i-th\n'...
+            '   %% reference signal should be considered here\n'...
+            '   [maxy,itp] = max(ynew);\n'...
+            '   tp(i) = t(itp);\n'...
+            'end\n\n'];
+            
+         case 7
+            txt=[...
+            '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'...
+            'function ess=sserror(y,index,sslevel)\n'...   
+            '%% ess=sserror(y,index,sslevel)\n'...
+            '%%\n'...
+            '%% Y       - plant output responses\n'...
+            '%% INDEX   - an index vector of the considered plant outputs\n'...
+            '%% SSLEVEL - the steady-state values of the outputs\n'...
+            '%% Return the percent steady-state error in a vector ESS\n\n'...
+            'if nargin<3,  sslevel=1; end %% steady state value  default\n'...
+            'nt=length(y(:,1));\n'...
+            'nout=length(index);\n'...
+            'ess=zeros(1,nout);\n\n'...
+            'for i=1:nout,\n'...
+            '   ynew=y{index(i)}(:,index(i));  \n'...
+            '   ess(i) = abs(100*(ynew(nt) - sslevel)/sslevel);\n'...
+            'end\n\n'];
+      end
+      fprintf(fid,txt);
+   end  
+end
+
+fclose(fid);
+
+
+

@@ -1,0 +1,44 @@
+function [acl,bcl,ccl1,dcl1,gamma,ccl2,dcl2]=lsdpcfg(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,a,b,c,d)
+% [acl,bcl,ccl1,dcl1,gamma,ccl2,dcl2]=lsdpcfg(aw1,bw1,cw1,dw1,aw2,bw2,cw2,dw2,a,b,c,d)
+%       
+%      returns synthesised  1 DOF controller for specified weightings 
+%      and plant for use with Macfarlane & Glovers LDSDP
+
+% To Thanh Binh IFAT University of Magdeburg Germany,
+% All Rights Reserved, 24-May-96
+
+if nargin<12, error('Plant not defined');end
+
+% G W_1
+[as1,bs1,cs1,ds1]=series(aw1,bw1,cw1,dw1,a,b,c,d);
+% W_2 G W_1
+[as,bs,cs,ds]=series(as1,bs1,cs1,ds1,aw2,bw2,cw2,dw2);
+
+
+% synthesise optimal controller Kopt:=(ak,bk,ck,dk)
+[ak,bk,ck,dk,gamma]=cpfsyn(as,bs,cs,ds);
+if ~gamma(1),
+   acl=[];bcl=[];ccl1=[];dcl1=[];ccl2=[];dcl2=[];
+   return,
+end
+
+% W_2 Kopt
+[as2,bs2,cs2,ds2]=series(aw2,bw2,cw2,dw2,ak,bk,ck,dk);
+
+% W_2(0)*Kopt(0)
+KO=cs2*inv(-as2)*bs2+ds2;       
+
+X=inv(eye(size(ds2,1))+ds2*ds1);
+
+acl=[as1-bs1*X*ds2*cs1  -bs1*X*cs2; bs2*(cs1-ds1*X*ds2*cs1) (as2-bs2*ds1*X*cs2)];
+bcl=[bs1*X*KO ; bs2*ds1*X*KO];
+ccl1=[cs1-ds1*X*ds2*cs1  -ds1*X*cs2];
+dcl1=ds1*X*KO;
+
+if nargout > 5,
+  [mw1,nw1]=size(cw1);
+  n1=size(as1,1);
+  ccl2=[[cw1,zeros(mw1,n1-nw1)]-dw1*X*ds2*cs1, -dw1*X*cs2];
+  dcl2=dw1*X*KO;
+end
+
